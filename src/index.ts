@@ -1,5 +1,6 @@
 export { Duta } from "./client";
 export { Emails } from "./emails";
+export { verifyWebhook } from "./verify";
 export type {
   DutaOptions,
   SendEmailOptions,

@@ -197,6 +197,50 @@ Types come bundled. Import them when you need to type things outside the call si
 import type { SendEmailOptions, Email, DutaError } from "@duta/sdk";
 ```
 
+## Verifying webhooks
+
+When you register a webhook endpoint in the Duta dashboard, you get a signing secret (`whsec_...`). Duta signs every request it sends to your endpoint using that secret, and puts the signature in the `X-Duta-Signature` header.
+
+Use `verifyWebhook` to check it before trusting the payload:
+
+```ts
+import { verifyWebhook } from "@duta/sdk";
+```
+
+**Next.js App Router**
+
+```ts
+export async function POST(req: Request) {
+  const body = await req.text(); // must be raw string, not parsed
+  const valid = await verifyWebhook(
+    body,
+    req.headers.get("x-duta-signature") ?? "",
+    process.env.DUTA_WEBHOOK_SECRET!,
+  );
+  if (!valid) return new Response("Invalid signature", { status: 401 });
+
+  const event = JSON.parse(body);
+  console.log(event.type); // "email.delivered", "email.bounced", etc.
+}
+```
+
+**Express**
+
+```ts
+app.post("/webhook", express.text({ type: "*/*" }), async (req, res) => {
+  const valid = await verifyWebhook(
+    req.body,
+    req.headers["x-duta-signature"] as string,
+    process.env.DUTA_WEBHOOK_SECRET!,
+  );
+  if (!valid) return res.status(401).send("Invalid signature");
+
+  const event = JSON.parse(req.body);
+});
+```
+
+The key thing: read the body as raw text before parsing. Once you call `JSON.parse` on it, the string is gone and the signature check will fail.
+
 ## Coming from Resend?
 
 The `send` shape lines up closely with what you already know, so most code carries over with small renames (for example `replyTo` instead of `reply_to`). A full migration guide is on the way.

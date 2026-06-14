@@ -1,6 +1,6 @@
 {
   "name": "@duta/sdk",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Official Duta SDK — transactional email for developers.",
   "license": "MIT",
   "author": "Duta",
