@@ -1,0 +1,35 @@
+name: Publish to npm
+
+# Publishes @duta/sdk to npm via Trusted Publishing (OIDC, no stored token).
+# Triggers when a version tag is pushed (e.g. v0.1.5), or manually.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required for OIDC trusted publishing + provenance
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      # npm OIDC trusted publishing requires npm >= 11.5.1.
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Install
+        run: npm ci
+
+      # prepublishOnly runs the build; provenance is attached automatically.
+      - name: Publish
+        run: npm publish --access public
