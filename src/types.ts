@@ -22,6 +22,10 @@ export interface SendEmailOptions {
   from: string;
   /** One recipient, or an array of recipients. */
   to: string | string[];
+  /** CC recipients. */
+  cc?: string | string[];
+  /** BCC recipients. */
+  bcc?: string | string[];
   /** Email subject line. */
   subject: string;
   /** HTML body. At least one of `html` or `text` is required. */
@@ -52,6 +56,8 @@ export interface Email {
   to: string[];
   from: string;
   replyTo: string | null;
+  cc: string[] | null;
+  bcc: string[] | null;
   subject: string;
   html: string | null;
   text: string | null;
@@ -78,6 +84,8 @@ export interface ListEmailsResult {
   emails: Email[];
   page: number;
   limit: number;
+  /** Total number of emails in your account (across all pages). */
+  total: number;
 }
 
 /**
