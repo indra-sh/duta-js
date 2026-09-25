@@ -177,7 +177,10 @@ describe('coverage of the API', () => {
     await duta.usage.get();
 
     // Each call as the spec writes it: /emails/{id}, with the /v1 prefix off.
-    const templates = Object.keys(spec.paths);
+    // Fixed paths first: /emails/batch also matches /emails/{id}.
+    const templates = Object.keys(spec.paths).sort(
+      (a, b) => a.split('{').length - b.split('{').length || a.localeCompare(b),
+    );
     const made = new Set(
       calls.map((c) => {
         const path = c.url.pathname.replace(/^\/v1/, '');

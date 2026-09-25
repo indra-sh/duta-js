@@ -7,7 +7,7 @@
   "homepage": "https://docs.duta.indra.sh/sdks/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/indra-sh/duta-js.git"
+    "url": "git+https://github.com/indra-sh/duta-js.git"
   },
   "bugs": {
     "url": "https://github.com/indra-sh/duta-js/issues"
