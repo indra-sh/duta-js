@@ -1,6 +1,6 @@
 {
   "name": "@duta/sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The official Node.js SDK for Duta, transactional email for Malaysia.",
   "license": "MIT",
   "author": "Duta",
@@ -41,7 +41,7 @@
   ],
   "sideEffects": false,
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsup",

@@ -4,7 +4,7 @@
  * Node 18+, Bun, Deno and Cloudflare Workers without a dependency.
  */
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.1';
 const DEFAULT_BASE_URL = 'https://api.duta.indra.sh';
 
 export interface DutaOptions {

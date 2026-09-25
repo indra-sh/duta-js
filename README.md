@@ -3,7 +3,7 @@
 The official Node.js SDK for [Duta](https://duta.indra.sh), transactional email
 for Malaysia.
 
-- No dependencies. Runs on Node 18+, Bun, Deno and Cloudflare Workers.
+- No dependencies. Runs on Node 20+, Bun, Deno and Cloudflare Workers.
 - Method names follow Resend's SDK, so moving code over is mechanical.
 - Retries rate limits and server errors safely: every send carries an
   idempotency key, so a retry can never send twice.
