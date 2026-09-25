@@ -1,13 +1,24 @@
-export { Duta } from "./client";
-export { Emails } from "./emails";
-export { verifyWebhook } from "./verify";
+export { Duta } from './duta.js';
 export type {
-  DutaOptions,
   SendEmailOptions,
-  SendEmailResult,
+  SendOptions,
+  BatchOptions,
+  SendResult,
   Email,
-  ListEmailsOptions,
-  ListEmailsResult,
-  Result,
-  DutaError,
-} from "./types";
+  EmailSummary,
+  Domain,
+  ApiKey,
+  CreatedApiKey,
+  Webhook,
+  CreatedWebhook,
+  WebhookDelivery,
+  WebhookEvent,
+  Suppression,
+  Log,
+  LogSummary,
+  Usage,
+} from './duta.js';
+export type { DutaOptions, DutaError, Result } from './http.js';
+export { VERSION } from './http.js';
+export { verifyWebhook, WebhookVerificationError } from './webhooks-verify.js';
+export type { VerifyOptions, WebhookHeaders } from './webhooks-verify.js';

@@ -1,250 +1,110 @@
-# Duta SDK
+# @duta/sdk
 
-TypeScript/JavaScript client for [Duta](https://duta.indra.sh).
+The official Node.js SDK for [Duta](https://duta.indra.sh), transactional email
+for Malaysia.
 
-Runs anywhere `fetch` exists: Node 18+, Cloudflare Workers, Vercel Edge, Deno, and the browser. No dependencies.
+- No dependencies. Runs on Node 18+, Bun, Deno and Cloudflare Workers.
+- Method names follow Resend's SDK, so moving code over is mechanical.
+- Retries rate limits and server errors safely: every send carries an
+  idempotency key, so a retry can never send twice.
+- Typed from Duta's OpenAPI spec, including every error `code`.
+
+## Upgrading from 0.1.x
+
+0.2.0 is a new SDK for Duta's current API, not an update of 0.1.x, which was
+written for an earlier version of Duta that no longer runs. Install 0.2.0 and
+follow this page.
 
 ## Install
 
-```bash
+```sh
 npm install @duta/sdk
 ```
 
-(or `pnpm add @duta/sdk` / `yarn add @duta/sdk`)
-
-## Quickstart
+## Send an email
 
 ```ts
-import { Duta } from "@duta/sdk";
+import { Duta } from '@duta/sdk';
 
-const duta = new Duta("duta_live_xxx");
+const duta = new Duta(process.env.DUTA_API_KEY);
 
 const { data, error } = await duta.emails.send({
-  from: "hello@yourdomain.com",
-  to: "user@example.com",
-  subject: "Welcome to Duta",
-  html: "<p>Thanks for signing up!</p>",
+  from: 'Kedai <resit@kedai.my>',
+  to: 'siti@example.com',
+  subject: 'Resit #1042',
+  html: '<p>Terima kasih.</p>',
 });
 
 if (error) {
-  console.error(error.message);
+  console.error(error.code, error.message, error.requestId);
 } else {
-  console.log("Sent:", data.id);
+  console.log(data.id);
 }
 ```
 
-Grab an API key from the [dashboard](https://app.duta.indra.sh). Note that the sender domain has to be verified in your account before it'll send.
+Every method returns `{ data, error }` and does not throw for an API error.
+`error.requestId` finds the request on the Logs screen in the dashboard.
 
-## Usage in your project
+## Idempotency
 
-Instantiate the client once at the module level so it is reused across requests, not recreated on every call.
-
-**Next.js / Express / NestJS / any Node.js server**
-
-Store your key in `.env` (or `.env.local` for Next.js):
-
-```
-DUTA_API_KEY=duta_live_xxx
-```
-
-Then create the client once:
+Each send gets an idempotency key automatically, so the SDK's own retries are
+safe. To make your own retries safe too, give a key that names the message:
 
 ```ts
-// lib/mailer.ts
-import { Duta } from "@duta/sdk";
-
-export const duta = new Duta(process.env.DUTA_API_KEY!);
+await duta.emails.send(receipt, { idempotencyKey: `receipt-${order.id}` });
 ```
 
-And import it wherever you need to send:
+## Batch
 
 ```ts
-// app/api/welcome/route.ts  (Next.js App Router)
-import { duta } from "@/lib/mailer";
+await duta.batch.send([first, second], { validation: 'permissive' });
+```
 
-export async function POST(req: Request) {
-  const { email, name } = await req.json();
+## Paging
 
-  const { data, error } = await duta.emails.send({
-    from: "hello@yourdomain.com",
-    to: email,
-    subject: `Welcome, ${name}!`,
-    html: `<p>Hey ${name}, thanks for signing up.</p>`,
-  });
-
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ id: data.id });
+```ts
+for await (const email of duta.emails.listAll({ status: 'bounced' })) {
+  console.log(email.id);
 }
 ```
 
-**Cloudflare Workers / Hono**
+`logs.listAll` and `suppressions.listAll` work the same way. `list` returns one
+page with `has_more` and `next`.
 
-Workers don't have module-level environment variables, so instantiate per request using `c.env`:
+## Verify webhooks
 
 ```ts
-import { Duta } from "@duta/sdk";
-
-app.post("/welcome", async (c) => {
-  const duta = new Duta(c.env.DUTA_API_KEY);
-
-  const { data, error } = await duta.emails.send({
-    from: "hello@yourdomain.com",
-    to: "user@example.com",
-    subject: "Welcome!",
-    html: "<p>Thanks for signing up.</p>",
-  });
-
-  if (error) return c.json({ error: error.message }, 500);
-  return c.json({ id: data.id });
+const event = await duta.webhooks.verify({
+  payload: rawBody, // the raw request body, before JSON parsing
+  headers: request.headers,
+  secret: process.env.DUTA_WEBHOOK_SECRET,
 });
 ```
 
-## Sending
+It throws `WebhookVerificationError` when the signature is wrong or the
+delivery is more than five minutes old.
 
-`to` takes one address or an array:
+## Everything else
+
+| | |
+|---|---|
+| `emails` | `send`, `get`, `list`, `listAll` |
+| `batch` | `send` |
+| `domains` | `create`, `list`, `get`, `verify`, `remove` |
+| `apiKeys` | `create`, `list`, `remove` |
+| `webhooks` | `create`, `list`, `get`, `remove`, `enable`, `test`, `deliveries`, `verify` |
+| `suppressions` | `create`, `list`, `listAll`, `remove` |
+| `logs` | `list`, `listAll`, `get` |
+| `usage` | `get` |
+
+## Options
 
 ```ts
-await duta.emails.send({
-  from: "hello@yourdomain.com",
-  to: ["a@example.com", "b@example.com"],
-  subject: "Hello both of you",
-  text: "Plain text works too.",
+new Duta(key, {
+  baseUrl: 'https://api.duta.indra.sh', // or DUTA_BASE_URL
+  timeoutMs: 30_000,                     // per attempt
+  maxRetries: 2,
 });
 ```
 
-You can send `html`, `text`, or both. `replyTo` and `tags` are optional:
-
-```ts
-await duta.emails.send({
-  from: "hello@yourdomain.com",
-  to: "user@example.com",
-  subject: "Your receipt",
-  html: "<p>Thanks for your order.</p>",
-  replyTo: "support@yourdomain.com",
-  tags: { order_id: "1234", plan: "pro" },
-});
-```
-
-## Error handling
-
-Nothing throws on an API error. You get back `{ data, error }` instead, and exactly one of them is set. So check `error`, and if it's `null` you're good to use `data`.
-
-```ts
-const { data, error } = await duta.emails.send({ ... });
-
-if (error) {
-  switch (error.name) {
-    case "authentication_error":   // bad or missing API key
-    case "permission_denied":      // sender domain not verified, or key lacks scope
-    case "rate_limit_exceeded":    // slow down
-    case "unprocessable_entity":   // e.g. recipient is on the suppression list
-      console.error(error.statusCode, error.name, error.message);
-  }
-  return;
-}
-```
-
-When a send is rejected because a recipient is on your suppression list, `error.blocked` holds the addresses that were skipped.
-
-## API
-
-### `new Duta(apiKey, options?)`
-
-`options` is optional:
-
-- `baseUrl` (string): point the client somewhere other than `https://api.duta.indra.sh`.
-- `fetch` (function): supply your own fetch if there's no global one.
-
-### `duta.emails.send(options)`
-
-| Field | Type | Notes |
-|---|---|---|
-| `from` | `string` | Required. Domain must be verified. |
-| `to` | `string \| string[]` | Required. One recipient or several. |
-| `subject` | `string` | Required. |
-| `html` | `string` | HTML body. Send `html`, `text`, or both. |
-| `text` | `string` | Plain-text body. |
-| `replyTo` | `string` | Optional Reply-To address. |
-| `tags` | `Record<string, string>` | Optional metadata. |
-
-Returns `{ id, status }`.
-
-### `duta.emails.get(id)`
-
-Fetch one email by its ID. Returns the full record:
-
-```ts
-const { data } = await duta.emails.get("a1b2c3...");
-// data: { id, to, from, subject, html, text, status, createdAt, ... }
-```
-
-### `duta.emails.list({ page?, limit? })`
-
-List emails newest-first. `page` starts at 1, `limit` caps at 100.
-
-```ts
-const { data } = await duta.emails.list({ page: 1, limit: 20 });
-// data: { emails: [...], page, limit }
-```
-
-`get` and `list` read your account's email history, so they need a full-access key. Sending-only keys can call `send` but not these.
-
-## TypeScript
-
-Types come bundled. Import them when you need to type things outside the call site:
-
-```ts
-import type { SendEmailOptions, Email, DutaError } from "@duta/sdk";
-```
-
-## Verifying webhooks
-
-When you register a webhook endpoint in the Duta dashboard, you get a signing secret (`whsec_...`). Duta signs every request it sends to your endpoint using that secret, and puts the signature in the `X-Duta-Signature` header.
-
-Use `verifyWebhook` to check it before trusting the payload:
-
-```ts
-import { verifyWebhook } from "@duta/sdk";
-```
-
-**Next.js App Router**
-
-```ts
-export async function POST(req: Request) {
-  const body = await req.text(); // must be raw string, not parsed
-  const valid = await verifyWebhook(
-    body,
-    req.headers.get("x-duta-signature") ?? "",
-    process.env.DUTA_WEBHOOK_SECRET!,
-  );
-  if (!valid) return new Response("Invalid signature", { status: 401 });
-
-  const event = JSON.parse(body);
-  console.log(event.type); // "email.delivered", "email.bounced", etc.
-}
-```
-
-**Express**
-
-```ts
-app.post("/webhook", express.text({ type: "*/*" }), async (req, res) => {
-  const valid = await verifyWebhook(
-    req.body,
-    req.headers["x-duta-signature"] as string,
-    process.env.DUTA_WEBHOOK_SECRET!,
-  );
-  if (!valid) return res.status(401).send("Invalid signature");
-
-  const event = JSON.parse(req.body);
-});
-```
-
-The key thing: read the body as raw text before parsing. Once you call `JSON.parse` on it, the string is gone and the signature check will fail.
-
-## Coming from Resend?
-
-The `send` shape lines up closely with what you already know, so most code carries over with small renames (for example `replyTo` instead of `reply_to`). A full migration guide is on the way.
-
-## License
-
-MIT
+Full documentation: https://docs.duta.indra.sh
